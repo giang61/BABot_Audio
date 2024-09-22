@@ -75,7 +75,7 @@ if uploaded_audio is not None:
         transcription_text = ""
         for utterance in transcript.utterances:
             st.write(f"**Interlocuteur {utterance.speaker}:** {utterance.text}")
-            transcription_text += f"{utterance.text} "
+            transcription_text += f"**Interlocuteur {utterance.speaker}: **{utterance.text}\n "
 
         # Option pour sauvegarder la transcription dans un fichier
         with open("./data/Audio/transcription.txt", "w", encoding="utf-8") as file:
