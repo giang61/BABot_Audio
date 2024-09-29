@@ -83,9 +83,11 @@ if uploaded_audio is not None:
 
         # Use textwrap to split the transcription text into lines of the specified length
         #wrapped_text = "\n".join(textwrap.fill(line, width=max_line_length) for line in transcription_text.splitlines())
-
+        temp_dir = './temp'
+        os.makedirs(temp_dir, exist_ok=True)
         # Option pour sauvegarder la transcription dans un fichier
-        with open("./data/Audio/transcription.txt", "w", encoding="utf-8") as file:
+        temp_file_path = os.path.join(temp_dir, 'transcription.txt')
+        with open(temp_file_path, "w", encoding="utf-8") as file:
             #file.write(wrapped_text)
             file.write(transcription_text)
 
