@@ -4,6 +4,7 @@ langchain-community
 langchain-experimental
 openai
 pinecone-client
+pinecone
 streamlit
 streamlit-chat
 langchain-pinecone
@@ -16,3 +17,8 @@ pypdf2
 openpyxl
 SQLAlchemy
 psycopg2
+pypdf
+textwrap
+fpdf
+unstructured
+python-magic-bin

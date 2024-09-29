@@ -10,7 +10,7 @@ from dotenv import load_dotenv, find_dotenv
 # Streamlit page configuration
 st.set_page_config(page_title="Audio Transcription", page_icon="🎙️", layout="wide")
 
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv('.env_EricH'))
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 # AssemblyAI API Key setup
 ASSEMBLYAI_API_KEY = os.getenv('ASSEMBLYAI_API_KEY')  # Or directly set your API key here
@@ -46,7 +46,6 @@ def summarize_transcription(text):
     )
 
     # Extract and return the summary from the response
-    # summary = response['choices'][0]['message']['content'].strip()
     summary = response.choices[0].message.content
     return summary
 
@@ -54,11 +53,11 @@ def summarize_transcription(text):
 st.title("BABot_Audio")
 
 st.write("### Transcrire et Résumer vos réunions")
-uploaded_audio = st.file_uploader("Sélectionner un fichier audio (mp3, wav)", type=["mp3", "wav"])
+uploaded_audio = st.file_uploader("Sélectionner un fichier audio", type=None)  # Allow all audio file types
 
 if uploaded_audio is not None:
     # Save the uploaded file to a temporary location
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(uploaded_audio.read())
         temp_file_path = temp_file.name
 
@@ -73,12 +72,21 @@ if uploaded_audio is not None:
     else:
         st.write("### Résultats de la Transcription")
         transcription_text = ""
+
+        # Iterate over each utterance and build the transcription text
         for utterance in transcript.utterances:
             st.write(f"**Interlocuteur {utterance.speaker}:** {utterance.text}")
             transcription_text += f'Interlocuteur {utterance.speaker}: {utterance.text}\n\n '
 
+        # Option to wrap lines before saving the transcription in a text file
+        #max_line_length: int = 80  # Set the maximum number of characters per line
+
+        # Use textwrap to split the transcription text into lines of the specified length
+        #wrapped_text = "\n".join(textwrap.fill(line, width=max_line_length) for line in transcription_text.splitlines())
+
         # Option pour sauvegarder la transcription dans un fichier
         with open("./data/Audio/transcription.txt", "w", encoding="utf-8") as file:
+            #file.write(wrapped_text)
             file.write(transcription_text)
 
         st.success("Transcription sauvegardée dans 'transcription.txt'.")
