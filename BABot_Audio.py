@@ -4,13 +4,12 @@ import assemblyai as aai
 import tempfile
 import openai
 from openai import Client
-
 from dotenv import load_dotenv, find_dotenv
 
 # Streamlit page configuration
 st.set_page_config(page_title="Audio Transcription", page_icon="🎙️", layout="wide")
 
-load_dotenv(find_dotenv('.env_EricH'))
+load_dotenv(find_dotenv('.env'))
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 # AssemblyAI API Key setup
 ASSEMBLYAI_API_KEY = os.getenv('ASSEMBLYAI_API_KEY')  # Or directly set your API key here
@@ -78,26 +77,32 @@ if uploaded_audio is not None:
             st.write(f"**Interlocuteur {utterance.speaker}:** {utterance.text}")
             transcription_text += f'Interlocuteur {utterance.speaker}: {utterance.text}\n\n '
 
-        # Option to wrap lines before saving the transcription in a text file
-        #max_line_length: int = 80  # Set the maximum number of characters per line
-
         # Use textwrap to split the transcription text into lines of the specified length
-        #wrapped_text = "\n".join(textwrap.fill(line, width=max_line_length) for line in transcription_text.splitlines())
+        # wrapped_text = "\n".join(textwrap.fill(line, width=80) for line in transcription_text.splitlines())
+
         temp_dir = './temp'
         os.makedirs(temp_dir, exist_ok=True)
         # Option pour sauvegarder la transcription dans un fichier
         temp_file_path = os.path.join(temp_dir, 'transcription.txt')
         with open(temp_file_path, "w", encoding="utf-8") as file:
-            #file.write(wrapped_text)
             file.write(transcription_text)
 
-        st.success("Transcription sauvegardée dans 'transcription.txt'.")
+        st.success("Transcription sauvegardée dans 'transcription.txt'.  Vous pouvez le télécharger.")
+
+        # Add a download button
+        with open(temp_file_path, "r") as file:
+            st.download_button(
+                label="Télécharger",
+                data=file,
+                file_name="transcription.txt",  # The name of the file when downloaded
+                mime="text/plain; charset=utf-8"  # MIME type for plain text files
+            )
 
         # Résumer la transcription avec ChatGPT (OpenAI)
-        st.write("Résumé de la transcription en cours...")
-        summary = summarize_transcription(transcription_text)
+        # st.write("Résumé de la transcription en cours...")
+        # summary = summarize_transcription(wrapped_text)
 
-        st.write("### Résumé du texte transcrit:")
-        st.write(summary)
+        # st.write("### Résumé du texte transcrit:")
+        # st.write(summary)
 else:
     st.info("Téléchargez votre fichier audio pour démarrer la transcription.")
