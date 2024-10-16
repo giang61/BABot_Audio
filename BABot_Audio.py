@@ -7,7 +7,7 @@ from openai import Client
 from dotenv import load_dotenv, find_dotenv
 
 # Streamlit page configuration
-st.set_page_config(page_title="Audio Transcription", page_icon="🎙️", layout="wide")
+st.set_page_config(page_title="Audio Transcription", page_icon="🎙️", layout="centered")
 
 load_dotenv(find_dotenv('.env'))
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -76,74 +76,79 @@ if uploaded_audio is not None:
     if transcript.status == aai.TranscriptStatus.error:
         st.error(f"Erreur dans la transcription: {transcript.error}")
     else:
-        transcription_text = ""
-        unique_speakers = set()
-
-        st.write("### Résultats de la Transcription")
+        # Store the transcription in session state to avoid re-running the transcription
+        st.session_state.transcription = transcript
+        st.session_state.transcription_text = ""
+        st.session_state.unique_speakers = set()
 
         # Iterate over each utterance and build the transcription text
         for utterance in transcript.utterances:
-            st.write(f"**{utterance.speaker}:** {utterance.text}")
-            transcription_text += f'{utterance.speaker}: {utterance.text}\n\n '
-            unique_speakers.add(utterance.speaker)  # Collect all unique speakers
+            st.session_state.transcription_text += f'{utterance.speaker}: {utterance.text}\n\n'
+            st.session_state.unique_speakers.add(utterance.speaker)  # Collect all unique speakers
 
         # Step 2: allow users to map speaker labels to real names
-        # Step 1: Display the detected speakers and request their real names
-        st.write("### Qui sont les interlocuteurs?")
+    st.write("### Résultats de la Transcription")
 
-        # Display detected speakers
-        st.write("**Interlocuteurs détectés**")
-        st.write(", ".join(unique_speakers))  # Show all detected speakers
+    # Display the transcription
+    for utterance in st.session_state.transcription.utterances:
+        st.write(f"**{utterance.speaker}:** {utterance.text}")
 
-        # Collect real names in a single text area, one per line or comma-separated
-        speaker_names_input = st.text_area(
-            "Entrez les noms des interlocuteurs dans l'ordre (un par ligne ou séparés par une virgule)", "")
+    st.write("### Qui sont les interlocuteurs?")
 
-        # Step 2: Process the input names
-        if st.button("Mettre à jour les noms"):
-            # Split the input by lines or commas and strip spaces
-            input_names = [name.strip() for name in speaker_names_input.replace(",", "\n").splitlines()]
+    # Display detected speakers
+    st.write("**Interlocuteurs détectés**")
+    st.write(", ".join(st.session_state.unique_speakers))  # Show all detected speakers
 
-            # Ensure that the number of input names matches the number of unique speakers
-            if len(input_names) != len(unique_speakers):
-                st.error(
-                    f"Vous avez spécifié {len(input_names)} noms, mais {len(unique_speakers)} interlocuteurs ont été détectés. Veuillez réessayer.")
-            else:
+    # Collect real names in a single text area, one per line or comma-separated
+    speaker_names_input = st.text_area(
+        "Entrez les noms des interlocuteurs dans l'ordre (un par ligne ou séparés par une virgule)", "")
+
+    # Step 3: Process the input names and update speaker names
+    if st.button("Mettre à jour les noms"):
+        input_names = [name.strip() for name in speaker_names_input.replace(",", "\n").splitlines()]
+
+        # Ensure that the number of input names matches the number of unique speakers
+        if len(input_names) != len(st.session_state.unique_speakers):
+            st.error(
+                f"Vous avez spécifié {len(input_names)} noms, mais {len(st.session_state.unique_speakers)} interlocuteurs ont été détectés. Veuillez réessayer.")
+        else:
+            # Step 3 Optimization: Initialize session_state variables if they don't exist
+            if 'updated_transcription_text' not in st.session_state:
+                st.session_state.updated_transcription_text = ""
+            if 'speaker_mapping' not in st.session_state:
+                st.session_state.speaker_mapping = {}
+
+            # Only update speaker names if they haven't already been mapped or if the mapping has changed
+            if st.session_state.speaker_mapping != dict(zip(st.session_state.unique_speakers, input_names)):
+
                 # Map each detected speaker to the corresponding real name
-                speaker_mapping = dict(zip(unique_speakers, input_names))
+                st.session_state.speaker_mapping = dict(zip(st.session_state.unique_speakers, input_names))
 
-                # Step 3: Replace speaker labels with real names in the transcription
-                updated_transcription_text = ""
+                # Replace speaker labels with real names in the transcription
+                st.session_state.updated_transcription_text = ""
 
-                for utterance in transcript.utterances:
-                    # Replace speaker label with the real name specified by the user
-                    real_name = speaker_mapping.get(utterance.speaker, utterance.speaker)
+                for utterance in st.session_state.transcription.utterances:
+                    real_name = st.session_state.speaker_mapping.get(utterance.speaker, utterance.speaker)
                     st.write(f"**{real_name}:** {utterance.text}")
-                    updated_transcription_text += f'{real_name}: {utterance.text}\n\n '
+                    st.session_state.updated_transcription_text += f'{real_name}: {utterance.text}\n\n'
 
-                temp_dir = './temp'
-                os.makedirs(temp_dir, exist_ok=True)
-                # Option pour sauvegarder la transcription dans un fichier
-                temp_file_path = os.path.join(temp_dir, 'transcription.txt')
-                with open(temp_file_path, "w", encoding="utf-8") as file:
-                    file.write(updated_transcription_text)
+            # Save the updated transcription to a file
+            temp_dir = './temp'
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_file_path = os.path.join(temp_dir, 'transcription.txt')
+            with open(temp_file_path, "w", encoding="utf-8") as file:
+                file.write(st.session_state.updated_transcription_text)
 
-                st.success("Transcription sauvegardée dans 'transcription.txt'.  Vous pouvez le télécharger.")
+            st.success("Transcription sauvegardée dans 'transcription.txt'. Vous pouvez le télécharger.")
 
-                # Add a download button
-                with open(temp_file_path, "rb") as file:
-                    st.download_button(
-                        label="Télécharger",
-                         data=file,
-                         file_name="transcription.txt",  # The name of the file when downloaded
-                            mime="text/plain; charset=utf-8"  # MIME type for plain text files
-                    )
+            # Add a download button
+            with open(temp_file_path, "rb") as file:
+                st.download_button(
+                    label="Télécharger",
+                    data=file,
+                    file_name="transcription.txt",  # The name of the file when downloaded
+                    mime="text/plain; charset=utf-8"  # MIME type for plain text files
+                )
 
-        # Résumer la transcription avec ChatGPT (OpenAI)
-        # st.write("Résumé de la transcription en cours...")
-        # summary = summarize_transcription(wrapped_text)
-
-        # st.write("### Résumé du texte transcrit:")
-        # st.write(summary)
 else:
     st.info("Téléchargez votre fichier audio pour démarrer la transcription.")
